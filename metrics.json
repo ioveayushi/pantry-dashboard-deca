@@ -1,0 +1,35 @@
+{
+  "alpha": 1.0,
+  "overall_mape": 0.3820061481545051,
+  "mape_by_target": {
+    "households_served": 0.29700090466191087,
+    "total_food_lbs_distributed": 0.4822186650259525,
+    "volunteers_recommended": 0.3667988747756518
+  },
+  "n_train": 16000,
+  "n_test": 4000,
+  "features": [
+    "crisis_flag",
+    "food_drive_flag",
+    "pantry_id",
+    "year",
+    "month",
+    "weekofyear",
+    "season",
+    "holiday_flag",
+    "school_break_flag",
+    "severe_weather_flag",
+    "avg_temp_f",
+    "precip_in",
+    "econ_pressure_index",
+    "donations_lbs",
+    "hardship_index",
+    "immigrant_share",
+    "capacity_households"
+  ],
+  "targets": [
+    "households_served",
+    "total_food_lbs_distributed",
+    "volunteers_recommended"
+  ]
+}
