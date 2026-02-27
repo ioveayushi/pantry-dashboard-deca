@@ -14,32 +14,53 @@ import streamlit as st
 st.set_page_config(page_title="Pantry Forecast Dashboard", page_icon="🥫", layout="wide")
 
 # -----------------------------
-# Polished styling (cards + spacing)
+# Polished styling (cards + color accents)
+# Change the HEX codes below to match your paper.
 # -----------------------------
-st.markdown(
-    """
-<style>
-.block-container { padding-top: 1.2rem; padding-bottom: 1.5rem; }
-h1, h2, h3 { letter-spacing: -0.02em; }
+ACCENT_RED = "#cb0000"
+ACCENT_BLUE = "#b28256"
+ACCENT_GREEN = "#305939"
+SOFT_BG = "#a7c9ae"
 
-.card {
+st.markdown(
+    f"""
+<style>
+.block-container {{ padding-top: 1.2rem; padding-bottom: 1.5rem; }}
+h1, h2, h3 {{ letter-spacing: -0.02em; }}
+
+.card {{
   background: white;
   border: 1px solid rgba(17,24,39,0.10);
   border-radius: 16px;
   padding: 16px 16px;
   box-shadow: 0 8px 22px rgba(17,24,39,0.06);
   margin-bottom: 14px;
-}
-.kicker {
+}}
+
+.card-soft {{
+  background: linear-gradient(180deg, {SOFT_BG} 0%, rgba(255,255,255,1) 100%);
+}}
+
+.accent-red {{ border-left: 6px solid {ACCENT_RED}; }}
+.accent-blue {{ border-left: 6px solid {ACCENT_BLUE}; }}
+.accent-green {{ border-left: 6px solid {ACCENT_GREEN}; }}
+
+.pill {{
+  display:inline-block;
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: color-mix(in srgb, {ACCENT_RED} 12%, white);
+  color: {ACCENT_RED};
+  font-weight: 700;
   font-size: 0.85rem;
-  opacity: 0.72;
-  margin-bottom: 0.25rem;
-}
-.smallcap {
+}}
+
+.smallcap {{
   font-size: 0.85rem;
   opacity: 0.78;
-}
-hr { margin: 0.6rem 0 0.9rem 0; }
+}}
+
+hr {{ margin: 0.6rem 0 0.9rem 0; }}
 </style>
 """,
     unsafe_allow_html=True,
@@ -125,12 +146,10 @@ TARGET_FALLBACK = [
 
 
 def pick_default_data() -> str | None:
-    # Best for Streamlit Cloud: commit a small demo file
     demo = ROOT / "demo_data.csv.gz"
     if demo.exists():
         return str(demo)
 
-    # Local fallback: newest scenario_runs file
     sr = ROOT / "scenario_runs"
     if sr.exists():
         files = list(sr.glob("*.csv.gz")) + list(sr.glob("*.csv"))
@@ -141,12 +160,10 @@ def pick_default_data() -> str | None:
 
 
 def pick_default_model() -> str | None:
-    # Prefer model.joblib in repo root
     root_model = ROOT / "model.joblib"
     if root_model.exists():
         return str(root_model)
 
-    # Local fallback: newest scenario_runs model file
     sr = ROOT / "scenario_runs"
     if sr.exists():
         files = list(sr.glob("model_*.joblib")) + list(sr.glob("*.joblib"))
@@ -183,7 +200,7 @@ def load_model(path: str):
 
 
 # -----------------------------
-# Resolve assets (works on Cloud or local)
+# Resolve assets (Cloud or local)
 # -----------------------------
 data_path = ARGS.data or pick_default_data()
 model_path = ARGS.model or pick_default_model()
@@ -223,10 +240,11 @@ df = load_data(data_path)
 # Header
 # -----------------------------
 st.title("Community Food Pantry Predictive Model")
+st.markdown("<span class='pill'>Staff-ready forecast</span>", unsafe_allow_html=True)
 st.caption(f"Data: {Path(data_path).name}   ·   Model: {Path(model_path).name}")
 
 # -----------------------------
-# UI layout
+# Layout
 # -----------------------------
 left, right = st.columns([1.10, 1.0])
 
@@ -237,7 +255,7 @@ if not pantry_ids:
     st.stop()
 
 with left:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="card card-soft accent-blue">', unsafe_allow_html=True)
     st.subheader("Auto-loaded inputs (latest cycle → predict next cycle)")
 
     pantry_id = st.selectbox("Pantry ID", pantry_ids, index=0)
@@ -270,7 +288,7 @@ with left:
     immigrant_share = float(latest.get("immigrant_share", 0.35))
     capacity_households = int(latest.get("capacity_households", 600))
 
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="card card-soft accent-red">', unsafe_allow_html=True)
     st.subheader("Optional staff overrides")
 
     with st.expander("Open overrides", expanded=True):
@@ -308,9 +326,6 @@ with left:
 
         capacity_households = st.number_input(
             "Capacity (households per cycle)", min_value=20, value=int(capacity_households)
-        )
-        distribution_days = st.number_input(
-            "Distribution days in cycle", min_value=1, max_value=31, value=5
         )
 
     run = st.button("Generate Forecast", type="primary", use_container_width=True)
@@ -352,11 +367,11 @@ def predict() -> dict:
 
 # -------- Right: Outputs --------
 with right:
-    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.markdown('<div class="card card-soft accent-green">', unsafe_allow_html=True)
     st.subheader("Forecast Output")
 
     st.caption(
-        f"Cycle: {next_date.date()} · Season: {season.title()} · "
+        f"Cycle start: {next_date.date()} · Season: {season.title()} · "
         f"Holiday: {'Yes' if holiday_flag else 'No'} · Crisis: {'Yes' if crisis_flag else 'No'}"
     )
 
@@ -375,21 +390,22 @@ with right:
     food_lo, food_hi = pred_range(food, MAPE_BY_TARGET.get("total_food_lbs_distributed", 0.18))
     vol_lo, vol_hi = pred_range(vol, MAPE_BY_TARGET.get("volunteers_recommended", 0.16))
 
-    # KPI tiles (clean + judge-friendly)
+    # KPI tiles
     k1, k2, k3 = st.columns(3)
-    k1.metric("Expected households", fmt_int(hh), f"{fmt_int(hh_lo)}–{fmt_int(hh_hi)}")
-    k2.metric("Total food needed", fmt_lbs(food), f"{fmt_lbs(food_lo)}–{fmt_lbs(food_hi)}")
-    k3.metric("Volunteers (cycle)", fmt_float(vol, 1), f"{fmt_float(vol_lo,1)}–{fmt_float(vol_hi,1)}")
+    k1.metric("Expected households (two-week total)", fmt_int(hh), f"{fmt_int(hh_lo)}–{fmt_int(hh_hi)}")
+    k2.metric("Total food needed (lbs)", fmt_lbs(food), f"{fmt_lbs(food_lo)}–{fmt_lbs(food_hi)}")
+    k3.metric("Volunteers (two-week total)", fmt_float(vol, 1), f"{fmt_float(vol_lo,1)}–{fmt_float(vol_hi,1)}")
 
-    days = max(1, int(distribution_days))
+    # Per calendar day (assumption: open all 14 days)
+    CYCLE_DAYS = 14
     st.write("")
     d1, d2 = st.columns(2)
     d1.markdown(
-        f"<div class='smallcap'>Households per day</div><b>{fmt_float(hh/days,1)}</b>",
+        f"<div class='smallcap'>Households per day (assuming open all 14 days)</div><b>{fmt_float(hh/CYCLE_DAYS,1)}</b>",
         unsafe_allow_html=True,
     )
     d2.markdown(
-        f"<div class='smallcap'>Volunteers per day</div><b>{fmt_float(vol/days,1)}</b>",
+        f"<div class='smallcap'>Volunteers per day (assuming open all 14 days)</div><b>{fmt_float(vol/CYCLE_DAYS,2)}</b>",
         unsafe_allow_html=True,
     )
 
@@ -406,25 +422,5 @@ with right:
     }
     rows = [{"Category": k, "Rec. Amount (lbs)": int(round(food * v))} for k, v in shares.items()]
     st.dataframe(pd.DataFrame(rows), hide_index=True, use_container_width=True)
-
-    st.markdown("</div>", unsafe_allow_html=True)
-
-    # Error summary (separate card)
-    st.markdown('<div class="card">', unsafe_allow_html=True)
-    st.subheader("Model Error Summary (quick-look)")
-
-    def err_line(name: str, mean_val: float):
-        m = float(MAPE_BY_TARGET.get(name, 0.0))
-        typical = m * mean_val
-        if name == "households_served":
-            st.write(f"**{name}** · MAPE ≈ {m*100:.1f}% · typical miss ≈ {fmt_int(typical)} households")
-        elif name == "total_food_lbs_distributed":
-            st.write(f"**{name}** · MAPE ≈ {m*100:.1f}% · typical miss ≈ {int(round(typical)):,} lbs")
-        else:
-            st.write(f"**{name}** · MAPE ≈ {m*100:.1f}% · typical miss ≈ {fmt_float(typical,1)} volunteers")
-
-    err_line("households_served", float(hh))
-    err_line("total_food_lbs_distributed", float(food))
-    err_line("volunteers_recommended", float(vol))
 
     st.markdown("</div>", unsafe_allow_html=True)
