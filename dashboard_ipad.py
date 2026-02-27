@@ -239,7 +239,7 @@ df = load_data(data_path)
 # -----------------------------
 # Header
 # -----------------------------
-st.title("Community Food Pantry Predictive Model")
+st.title("Community Food Pantry Predictive Model Sample - DECA")
 st.markdown("<span class='pill'>Staff-ready forecast</span>", unsafe_allow_html=True)
 st.caption(f"Data: {Path(data_path).name}   ·   Model: {Path(model_path).name}")
 
